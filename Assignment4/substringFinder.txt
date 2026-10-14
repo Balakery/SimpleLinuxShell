@@ -1,0 +1,50 @@
+#include <string>
+using namespace std;
+
+bool subStringFinder(const string &longString, const string &subString);
+
+int main() {
+    string longString;
+    string subString;
+
+    cout << "Type a multi-token string: ";
+    getline(cin, longString);
+
+    cout << "Type a single-token string: ";
+    cin >> subString;
+
+    if (subStringFinder(longString, subString)) {
+        cout << "FOUND" << endl;
+    } else {
+        cout << "NOT FOUND" << endl;
+    }
+    return 0;
+}
+
+bool subStringFinder(const string &longString, const string &subString) {
+    int longStringLength = longString.length();
+    int subStringLength = subString.length();
+
+    for (int i = 0; i <= longStringLength - subStringLength; i++) {
+        int left = i;
+        int right = i + subStringLength - 1;
+        int p = 0;
+        int q = subStringLength - 1;
+
+        bool match = true;
+        while (p <= q) {
+            if (longString[left] != subString[p] || longString[right] != subString[q]) {
+                match = false;
+                break;
+            }
+            left++;
+            right--;
+            p++;
+            q--;
+        }
+        if (match) {
+            return true;
+        }
+    }
+    return false;
+}
