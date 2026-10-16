@@ -8,30 +8,31 @@
 #include <unordered_map>
 #include <functional>
 #include <fcntl.h>
-#include <io.h>
-
-#ifdef _WIN32
-#include <direct.h>
-#define getcwd _getcwd
-#else
-#include <unistd.h> // for getcwd
-#endif
-
+#include <unistd.h>
+#include <sys/wait.h>
+#include <fstream>
+#include <sstream>
 using namespace std;
 
+vector<string> commandHistory;
+const string HISTORY_FILE = "shell_history.txt";
+
 void pwd();
-void cd();
 void ls();
 void history();
 void clear();
+void executeCommand(const string& input);
 
 int main() {
-	string input;
-	cout << "User: ";
-	cin >> input;
+	ifstream file(HISTORY_FILE);
+	string line;
+	while (getline(file, line)) {
+		if (!line.empty()) {
+			commandHistory.push_back(line);
+		}
+	}
 
-	vector<string> commandHistory;
-	commandHistory.push_back(input);
+	string input;
 
 	unordered_map<string, void(*)()> commands{
 		{"pwd", pwd},
@@ -40,52 +41,66 @@ int main() {
 		{"clear", clear}
 	};
 
-	while (getline(cin, input)) {
-		//exit
-		if (input == "exit") break;
+	while (true) {
+		cout << "$ ";
+		if (!getline(cin, input)) break;
+		if (input.empty()) continue;
+
 		commandHistory.push_back(input);
 
-		string command = input;
-		string inputFile = "";
-		string outputFile = "";
+		if (input == "exit") {
+			break;
+		}
 
-		int fd[2];
-		int saved_stdout = dup(STDOUT_FILENO);
-		int saved_stdin = dup(STDIN_FILENO);
-		
-		//use the commands map to call the function
 		auto it = commands.find(input);
 		if (it != commands.end()) {
 			it->second();
+		} else {
+			executeCommand(input);
 		}
-		else {
-			cout << "Unknown command\n";
-		}
-		
-		cout << "User: ";
-		cin >> input;
 	}
+
+	ofstream outfile(HISTORY_FILE);
+	for (const auto& cmd : commandHistory) {
+		outfile << cmd << "\n";
+	}
+
 	return 0;
 }
 
 void pwd() {
 	char buffer[1024];
 	if (getcwd(buffer, sizeof(buffer)) != nullptr) {
-		cout << "Current Directory: " << buffer << endl << endl;
-	}
-	else {
-		cout << "Error!" << endl;
+		cout << buffer << "\n";
+	} else {
+		perror("getcwd");
 	}
 }
 
 void ls() {
-
+	vector<string> args = {"ls"};
+	pid_t pid = fork();
+	if (pid == 0) {
+		vector<char*> argv;
+		argv.push_back(const_cast<char*>(args[0].c_str()));
+		argv.push_back(nullptr);
+		execvp(argv[0], argv.data());
+		_exit(1);
+	} else if (pid > 0) {
+		wait(0);
+	}
 }
 
 void history() {
-
+	for (size_t i = 0; i < commandHistory.size(); ++i) {
+		cout << (i + 1) << "  " << commandHistory[i] << "\n";
+	}
 }
 
 void clear() {
+	system("clear");
+}
 
+void executeCommand(const string& input) {
+	
 }
